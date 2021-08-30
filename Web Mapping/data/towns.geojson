@@ -1,0 +1,72 @@
+let map = L.map("map").setView([32, 35], 8);
+
+L.tileLayer("https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attribution/">CartoDB</a>',
+    subdomains: "abcd",
+    maxZoom: 19
+}).addTo(map);
+
+// Information box
+let info = L.control({position: "topright"});
+info.onAdd = function() {
+    let div = L.DomUtil.create("div", "info");
+    div.innerHTML = '<h4>Towns in Israel</h4><p id="currentTown"></p>';
+    return div;
+};
+info.addTo(map);
+
+let geojson;
+
+function towns_color(d) {
+    if(d > 2089.8) return "#b30000";
+    if(d > 933.2) return "#e34a33";
+    if(d > 642) return "#fc8d59";
+    if(d > 399) return "#fdcc8a";
+    return "#fef0d9";
+}
+
+function towns_style(feature) {
+    return {
+        fillColor: towns_color(feature.properties.pop_2015),
+        weight: 0.5,
+        opacity: 1,
+        color: "black",
+        fillOpacity: 0.7
+    };
+}
+
+let highlightStyle = {
+    weight: 5,
+    color: "yellow",
+    fillOpacity: 0.5
+};
+
+let info_p = document.getElementById("currentTown");
+
+function highlightFeature(e) {
+    e.target.setStyle(highlightStyle);
+    e.target.bringToFront();
+    info_p.innerHTML =
+        e.target.feature.properties.name_eng + "<br>" + 
+        e.target.feature.properties.pop_2015 + " people";
+}
+
+function resetHighlight(e) {
+    geojson.resetStyle(e.target);
+    info_p.innerHTML = "";
+}
+
+fetch("data/towns.geojson")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        geojson = L.geoJSON(data, {
+            style: towns_style,
+            onEachFeature: function(feature, layer) {
+                layer.addEventListener("mouseover", highlightFeature);
+                layer.addEventListener("mouseout", resetHighlight);
+            }
+        }).addTo(map);
+            
+    });
